@@ -1,15 +1,10 @@
+out float oFog;
+
 void main()
 {
 	if (pgeDrawType == 2) // 3D																																  
 	{
-		vec4 outpos = pgeMVP * vec4(aPos.x, aPos.y, aPos.z, 1.0);
-		
-		float factor = outpos.y/40.0f;
-		factor = factor * factor * factor * 2.0f;
-		
-		
-		
-		gl_Position = outpos + vec4(0,-factor,factor,0);
+		gl_Position = pgeMVP * vec4(aPos.x, aPos.y, aPos.z, 1.0);
 		oTex = aTex;
 	}
 
@@ -47,5 +42,6 @@ void main()
 		oTex = aTex;
 	}
 
+	oFog = gl_Position.z;
 	oCol = aCol * pgeGlobalTint;
 }

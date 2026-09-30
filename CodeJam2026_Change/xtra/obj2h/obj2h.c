@@ -9,18 +9,63 @@ struct face { struct pos pos[3]; struct uv uv[3]; };
 
 struct pos  vbuff[1024];
 struct uv   vtbuff[1024];
-struct face fbuff[1024];
 
-int v_count;
-int vt_count;
-int f_count;
+struct obj_info {
+	struct face fbuff[1024];
+
+	char name[64];
+
+	int v_count;
+	int vt_count;
+	int f_count;	
+};
+
+int v_total, vt_total, f_total;
+struct obj_info obj[16];
+struct obj_info *obj_cur = obj;
+int obj_count;
+
+void obj_pos_append(struct obj_info *o, float x, float y, float z)
+{
+	struct pos *p = &vbuff[v_total++];
+
+	o->v_count++;
+	
+	p->x = x;
+	p->y = y;
+	p->z = z;
+}
+
+void obj_uv_append(struct obj_info *o, float u, float v)
+{
+	struct uv *uv = &vtbuff[vt_total++];
+	
+	o->vt_count++;
+	
+	uv->u = u;
+	uv->v = v;
+}
+
+void obj_face_append(struct obj_info *o, int *idx)
+{
+	struct face *f = &o->fbuff[o->f_count++];
+	
+	f_total++;
+	
+	f->pos[0] = vbuff[idx[0]-1];
+	f->uv[0] = vtbuff[idx[1]-1];
+	f->pos[1] = vbuff[idx[2]-1];
+	f->uv[1] = vtbuff[idx[3]-1];
+	f->pos[2] = vbuff[idx[4]-1];
+	f->uv[2] = vtbuff[idx[5]-1];
+}
 
 char filename_out[1024];
 
 int main(int argc, char *argv[])
 {
 	char *strptr;
-	int i;
+	int i, j;
 	FILE *file_in, *file_out;
 	
 	if(argc < 2) {
@@ -39,32 +84,31 @@ int main(int argc, char *argv[])
 		return 0;
 	}
 	
-	printf("%s --> %s\n", argv[1], filename_out);
-	
-	
 	while(1) {
 		char *ptr = fgets(buffer, 1024, file_in);
 		if(!ptr) break;
 		
 		switch(buffer[0]) {
+		case 'o': {
+			obj_cur =  &obj[obj_count++];
+			sscanf(buffer, "o %s", obj_cur->name);
+			} break;
+			
 		case 'f': {
 			int idx[6];
 			sscanf(buffer, "f %d/%d %d/%d %d/%d", &idx[0], &idx[1], &idx[2], &idx[3], &idx[4], &idx[5]);
-
-			for(i = 0; i < 6; i++) idx[i]--;
-			fbuff[f_count].pos[0] = vbuff[idx[0]]; fbuff[f_count].uv[0] = vtbuff[idx[1]];
-			fbuff[f_count].pos[1] = vbuff[idx[2]]; fbuff[f_count].uv[1] = vtbuff[idx[3]];
-			fbuff[f_count].pos[2] = vbuff[idx[4]]; fbuff[f_count].uv[2] = vtbuff[idx[5]];
-			f_count++;
+			obj_face_append(obj_cur, idx);
 			} break;
 
 		case 'v': 
 			if(buffer[1] == 't') {
-				sscanf(buffer, "vt %f %f", &vtbuff[vt_count].u, &vtbuff[vt_count].v);
-				vt_count++;
+				float u, v;
+				sscanf(buffer, "vt %f %f", &u, &v);
+				obj_uv_append(obj_cur, u, v);
 			} else {
-				sscanf(buffer, "v %f %f %f", &vbuff[v_count].x, &vbuff[v_count].y, &vbuff[v_count].z);
-				v_count++;
+				float x, y, z;
+				sscanf(buffer, "v %f %f %f", &x, &y, &z);
+				obj_pos_append(obj_cur, x, y, z);
 			} break;
 
 		default: break;
@@ -72,24 +116,29 @@ int main(int argc, char *argv[])
 	}
 	
 	fclose(file_in);
-
-	strptr[0] = '_';
-	strptr = strrchr(argv[1], '\\');
-	strptr = strptr ? strptr + 1 : argv[1];
-	fprintf(file_out, "int %s_total =  %d;\n", strptr, f_count * 15);
-	fprintf(file_out, "float %s[%d] = {\n", strptr, f_count * 15);
 	
-	for(i = 0; i < f_count; i++) {
-		fprintf(file_out, "\t%ff,%ff,%ff,%ff,%ff,\n", fbuff[i].pos[0].x, fbuff[i].pos[0].y, fbuff[i].pos[0].z, fbuff[i].uv[0].u, fbuff[i].uv[0].v);
-		fprintf(file_out, "\t%ff,%ff,%ff,%ff,%ff,\n", fbuff[i].pos[1].x, fbuff[i].pos[1].y, fbuff[i].pos[1].z, fbuff[i].uv[1].u, fbuff[i].uv[1].v);
-		fprintf(file_out, "\t%ff,%ff,%ff,%ff,%ff", fbuff[i].pos[2].x, fbuff[i].pos[2].y, fbuff[i].pos[2].z, fbuff[i].uv[2].u, fbuff[i].uv[2].v);
-		if(i < (f_count-1))	fprintf(file_out, ",\n");
+	fprintf(file_out, "namespace obj\n{\n");
+	for(i = 0; i < obj_count; i++) {
+		struct obj_info *o = &obj[i];
+		fprintf(file_out, "\tint %s_cnt =  %d;\n", o->name, o->f_count * 15);
+		fprintf(file_out, "\tfloat %s[%d] = {\n", o->name, o->f_count * 15);
+
+		for(j = 0; j < o->f_count;) {
+			struct face *f = &o->fbuff[j++];
+			
+			fprintf(file_out, "\t\t%9.6ff,%9.6ff,%9.6ff,%9.6ff,%9.6ff,\n", f->pos[0].x, f->pos[0].y, f->pos[0].z, f->uv[0].u, f->uv[0].v);
+			fprintf(file_out, "\t\t%9.6ff,%9.6ff,%9.6ff,%9.6ff,%9.6ff,\n", f->pos[1].x, f->pos[1].y, f->pos[1].z, f->uv[1].u, f->uv[1].v);
+			fprintf(file_out, "\t\t%9.6ff,%9.6ff,%9.6ff,%9.6ff,%9.6ff",    f->pos[2].x, f->pos[2].y, f->pos[2].z, f->uv[2].u, f->uv[2].v);
+			fprintf(file_out, j == o->f_count ? "};\n\n" : ",\n");
+		}
+		
+		printf("%s = v: %d, vt: %d, f: %d\n", o->name, o->v_count, o->vt_count, o->f_count);
 	}
 
-	fprintf(file_out, "\n};\n\n");
+	fprintf(file_out, "};\n");
 	fclose(file_out);
 	
-	printf("v: %d, vt: %d, f: %d\n", v_count, vt_count, f_count);
+	printf("TOTAL = v: %d, vt: %d, f: %d\n", v_total, vt_total, f_total);
 	
 	return 0;
 }
