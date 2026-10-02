@@ -20,12 +20,20 @@
 
 namespace bin2h
 {
+#if defined(__EMSCRIPTEN__)
+#include "data/models_em.h"
+#else
+#include "data/models.h"
+#endif
+
 #include "data/background_ps.h"
 #include "data/main_ps.h"
 #include "data/main_vs.h"
-#include "data/models_obj.h"
 #include "data/noise.h"
 #include "data/palette.h"
+#include "data/snd_boom.h"
+#include "data/snd_hit.h"
+#include "data/snd_shoot.h"
 }
 
 namespace mesh
@@ -56,6 +64,10 @@ namespace mesh
 
 class ksx_pewpew : public olc::PixelGameEngine
 {
+#define MAX_ENEMIES 32
+#define MAX_PARTICLES 64
+#define MAX_WEAPONS 3
+
 #include "audio.cpp"
 #include "enemies.cpp"
 #include "input.cpp"
@@ -82,7 +94,8 @@ class ksx_pewpew : public olc::PixelGameEngine
 		double posx = 0;
 		float posy  = 0;
 		float roll = 0;
-		float rotz = 0;
+		float speed = 1.0f;
+		bool hold = false;
 	} player;
 
 	double world_posx = 0;
@@ -96,6 +109,12 @@ class ksx_pewpew : public olc::PixelGameEngine
 		std::string shader_error = prog.Compile();
 
 		if(shader_error != "OK") {
+			std::cout << "VERTEX SHADER" << std::endl;
+			std::cout << "================================================================================" << std::endl;
+			std::cout << olc::gpu::Shader::VS_DefaultHeader() + vs_main << std::endl;
+			std::cout << "PIXEL SHADER" << std::endl;
+			std::cout << "================================================================================" << std::endl;
+			std::cout << olc::gpu::Shader::PS_DefaultHeader() + ps_main << std::endl;
 			std::cout << "Error compiling shader: " << shader_error << std::endl;
 			return false;
 		}
@@ -144,6 +163,7 @@ public:
 
 		draw.SetCullMode(olc::CullMode::ClockWise);
 
+
 		weapon_init();
 		particle_init();
 		enemy_init();
@@ -153,7 +173,6 @@ public:
 
 	bool OnUserUpdate(float fElapsedTime) override
 	{
-
 		check_input(fElapsedTime);
 		Weapon_step(fElapsedTime);
 		particle_step(player_bullet, fElapsedTime);
@@ -163,6 +182,12 @@ public:
 		particle_step(enemy_bullet, fElapsedTime);
 		enemy_step(fElapsedTime);
 
+		particle_step(particle_misc, fElapsedTime);
+
+		// DRAWING BACKGROUND
+
+		draw.EnableDepth(false);
+		draw.SetCullMode(olc::CullMode::None);
 		draw.Clear(olc::Colour::BLACK);
 
 		bg_off.y -= fElapsedTime * 0.25f;
@@ -176,9 +201,11 @@ public:
 		draw.SetShaderUniform("bg_region", bg_region);
 		draw.ImageRect(bg_image, {0,0}, {WND_WIDTH,WND_HEIGHT});
 
+		// DRAWING PLAYFIELD
+
+		draw.EnableDepth(true);
+		draw.SetCullMode(olc::CullMode::ClockWise);
 		draw.SetShader(main_render);
-		//float tfactor = (float)std::sin(TotalTimeElapsed() * 4.0);
-		//tfactor = tfactor * tfactor * tfactor;
 
 		vViewTranslate.x = -(float)world_posx;
 
@@ -188,18 +215,15 @@ public:
 		matView = matViewTranslate * matViewRotateX;
 		draw.SetViewMatrix(matView);
 
-		olc::mf4d matTrans, matRotZ, matRotY;
+		olc::mf4d matTrans, matRotY;
 		matTrans.translate((float)player.posx, player.posy, 0.0f);
-
 		matRotY.rotateY(player.roll * 0.5);
-		matRotZ.rotateZ(std::atanf(player.rotz));
 
-		matWorld = matTrans * matRotZ * matRotY;
+		matWorld = matTrans * matRotY;
 		draw.SetModelMatrix(matWorld);
-
 		mesh_draw(mesh::ship, true);
-		//draw.Mesh(mesh::ship.layout, mesh::ship.pos, mesh::ship.col, mesh::ship.uv, palette);
-		//draw.Mesh(mesh::bullet_ball.layout, mesh::bullet_ball.pos, mesh::bullet_ball.col, mesh::bullet_ball.uv, palette);
+
+		if(player.hold) mesh_draw(mesh::bullet_ball, false, olc::Colour::RED);
 
 		enemy_count = 0;
 		enemy_draw();
@@ -208,6 +232,8 @@ public:
 		particle_draw(particle_misc);
 		particle_draw(enemy_bullet);
 		particle_draw(player_bullet);
+
+		// DRAWING UI
 
 		draw.ResetShader();
 

@@ -373,11 +373,13 @@ namespace olc::ext::Miniaudio
 	{
 		if(!data) return false;
 		if(bytes <= 0) return false;
-
+		
 		m_buffer.resize(bytes);
-		uint8_t* result = reinterpret_cast<uint8_t*>(std::memcpy(m_buffer.data(), data, m_buffer.size()));
-		if(result == m_buffer.data())
-			return false;
+		m_buffer.insert(m_buffer.begin(), data, data+bytes);
+		
+		//uint8_t* result = reinterpret_cast<uint8_t*>(std::memcpy(m_buffer.data(), data, m_buffer.size()));
+		//if(result == m_buffer.data())
+		//	return false;
 
 		m_pgex = pgex;
 		m_num_voices = nNumVoices;

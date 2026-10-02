@@ -8,29 +8,43 @@ enum {
 olc::ext::Miniaudio::AudioEngine audio;
 olc::ext::Miniaudio::Sound sound[SND_TOTAL];
 
+
+bool audio_load_file(olc::ext::Miniaudio::Sound &snd, const char *filename, int voices = 1)
+{
+	if(!audio.CreateSoundFromFile(snd, filename, voices)) {
+		std::cout << "Error loading audio file: " << filename << std::endl;
+		return false;
+	}
+
+	return true;
+}
+
+bool audio_load_array(olc::ext::Miniaudio::Sound &snd, unsigned char *data, size_t size, const char *label, int voices = 1)
+{
+	if(!audio.CreateSoundFromMemory(snd, data, size, voices)) {
+		std::cout << "Error loading audio array: " << label << std::endl;
+		return false;
+	}
+
+	return true;
+}
+
 bool audio_init(void)
 {
 	if(!InstallSystemExtension(&audio))
 			return false;
 
+	bool all_ok = true;
 
-	audio.CreateSoundFromFile(sound[SND_SHOOT], "audio/shoot.wav");
-	audio.CreateSoundFromFile(sound[SND_HIT], "audio/hit.wav");
-	audio.CreateSoundFromFile(sound[SND_BOOM], "audio/boom.wav");
+	all_ok &= audio_load_array(sound[SND_SHOOT], bin2h::shoot_wav, sizeof(bin2h::shoot_wav), "audio/shoot.wav");
+	all_ok &= audio_load_array(sound[SND_HIT], bin2h::hit_wav, sizeof(bin2h::hit_wav), "audio/hit.wav");
+	all_ok &= audio_load_array(sound[SND_BOOM], bin2h::boom_wav, sizeof(bin2h::boom_wav), "audio/boom.wav");
 
-#if 0
-	/**
-         * this is here to demonstrate how the adventurous can
-         * exploit other features of miniaudio that hasn't been
-         * abstracted by the PGEX
-         *
-         * Here you get a pointer to a next active voice, or the
-		 * currently playing voice.
-         */
-        ma_sound_set_position(song1.GetMASound(), 0.0f, 0.0f, 0.0f);
-#endif
+	//all_ok &= audio_load_file(sound[SND_SHOOT], "audio/shoot.wav");
+	//all_ok &= audio_load_file(sound[SND_HIT], "audio/hit.wav");
+	//all_ok &= audio_load_file(sound[SND_BOOM], "audio/boom.wav");
 
-	return true;
+	return all_ok;
 }
 
 void audio_playpan(int id, float posx, float posy)

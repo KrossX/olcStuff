@@ -17660,12 +17660,20 @@ void main()
 				}
 				else if (task.cullmode == olc::CullMode::ClockWise)
 				{
+#if defined(__EMSCRIPTEN__)
+					gl.glCullFace(GL_BACK);
+#else
 					gl.glCullFace(GL_FRONT);
+#endif
 					gl.glEnable(GL_CULL_FACE);
 				}
 				else if (task.cullmode == olc::CullMode::CounterClockWise)
 				{
+#if defined(__EMSCRIPTEN__)
+					gl.glCullFace(GL_FRONT);
+#else
 					gl.glCullFace(GL_BACK);
+#endif
 					gl.glEnable(GL_CULL_FACE);
 				}
 

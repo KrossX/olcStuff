@@ -72,10 +72,14 @@ int main(int argc, char *argv[])
 		printf("Usage: obj2h input.obj\n\n");
 		return 0;
 	}
-
-	strptr = strrchr(argv[1], '.');         strptr[0] = '_';
-	sprintf(filename_out, "%s.h", argv[1]); strptr[0] = '.';
 	
+	if(argc < 3) {
+		strptr = strrchr(argv[1], '.');         strptr[0] = '_';
+		sprintf(filename_out, "%s.h", argv[1]); strptr[0] = '.';
+	} else {
+		strcpy(filename_out, argv[2]);
+	}
+
 	file_in = fopen(argv[1], "r");
 	file_out = fopen(filename_out, "w");
 	

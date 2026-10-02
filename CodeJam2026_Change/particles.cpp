@@ -1,5 +1,3 @@
-#define MAX_PARTICLES 32
-
 enum {
 	BULLET_PLAYER_W1 = 0,
 	BULLET_PLAYER_W2,
@@ -14,11 +12,11 @@ enum {
 };
 
 struct particle {
-	olc::vf2d pos, spd;
+	olc::vf2d pos, spd, psz;
 	bool active;
 	int type;
 	float lifetime;
-	int damage;
+	float damage;
 };
 
 particle enemy_bullet[MAX_PARTICLES];
@@ -36,9 +34,9 @@ void particle_init(void)
 	}
 }
 
-void particle_add(olc::vf2d pos, olc::vf2d speed, int type = 0, int damage = 1)
+void particle_add(olc::vf2d pos, olc::vf2d speed, olc::vf2d spz, int type, float damage = 1.0f)
 {
-	particle pnew = {pos, speed, true, type, 0, damage};
+	particle pnew = {pos, speed, spz, true, type, 0, damage};
 	particle *pstack = nullptr, *oldest;
 
 	switch(type) {
@@ -85,48 +83,132 @@ void particle_step(particle *pstack, float dt)
 		if(!pstack[i].active) continue;
 
 		pstack[i].pos += pstack[i].spd * dt;
+		pstack[i].psz.x += pstack[i].psz.y * dt;
+
 		pstack[i].lifetime += dt;
 
-		if(pstack[i].lifetime > 5.0f || pstack[i].pos.y > 0 || pstack[i].pos.y < -200.0f)
+		if(pstack[i].lifetime > 10.0f || pstack[i].pos.y > 0 || pstack[i].pos.y < -200.0f)
 			pstack[i].active = false;
 	}
 }
 
-void particle_draw(particle *pstack)
+void particle_draw_silhouette(olc::vf2d pos, float sz, mesh::mesh &m, olc::Pixel col)
 {
 	olc::mf4d world, scale;
-	
-	scale.scale(2.0f, 2.0f, 2.0f);
-	
 
+	world.identity();
+	world.translate(pos.x, pos.y, 0.0f);
+
+	scale.scale(sz+0.2f, sz+0.2f, sz+0.2f);
+	draw.SetModelMatrix(world * scale);
+	draw.SetCullMode(olc::CullMode::CounterClockWise);
+	mesh_draw(m, false, olc::Colour::BLACK);
+
+	scale.scale(sz, sz, sz);
+	draw.SetModelMatrix(world * scale);
+	draw.SetCullMode(olc::CullMode::ClockWise);
+	mesh_draw(m, false, col);
+}
+
+void particle_draw_smoke(particle &smoke)
+{
+	olc::mf4d world, scale;
+
+	world.identity();
+	world.translate(smoke.pos.x, smoke.pos.y, 0.0f);
+
+	float sz = smoke.lifetime;
+	scale.scale(sz, sz, sz);
+	draw.SetModelMatrix(world * scale);
+	mesh_draw(mesh::bullet_ball, false, olc::Colour::BLACK);
+}
+
+void particle_draw_explosion(particle &boom)
+{
+	if(boom.lifetime >= 1.0f) {
+		boom.active = false;
+		return;
+	}
+
+	olc::mf4d world, scale;
+
+	world.identity();
+	world.translate(boom.pos.x, boom.pos.y, 0.0f);
+
+	//float sz = 5.0f + boom.lifetime * 20.0f;
+	float factor = boom.lifetime - 1.0f;
+	factor = factor * factor;
+
+	float sz = 5.0f + (1.0f-factor)*30.0f;
+	scale.scale(sz, sz, sz);
+	draw.SetModelMatrix(world * scale);
+
+	draw.EnableDepth(false);
+	int alpha = (int)(factor * 255.0f);
+	mesh_draw(mesh::bullet_ball, false, olc::Pixel(255,255,0,alpha));
+	draw.EnableDepth(true);
+}
+
+void particle_draw_sparks(particle &spark)
+{
+	if(spark.lifetime >= 1.0f) {
+		spark.active = false;
+		return;
+	}
+
+	olc::mf4d world, scale;
+
+	world.identity();
+	world.translate(spark.pos.x, spark.pos.y, spark.psz.x);
+
+	float sz = 0.5f - spark.lifetime * 0.4f;
+	scale.scale(sz, sz, sz);
+	draw.SetModelMatrix(world * scale);
+
+	draw.EnableDepth(false);
+	olc::Pixel col = PixelLerp(olc::Colour::WHITE, olc::Colour::TANGERINE,  spark.lifetime);
+	mesh_draw(mesh::bullet_ball, false, col);
+	draw.EnableDepth(true);
+}
+
+void particle_draw(particle *pstack)
+{
 	for(int i = 0; i < MAX_PARTICLES; i++) {
 		if(!pstack[i].active) continue;
 
 		particle_count++;
 
-		world.identity();
-		world.translate(pstack[i].pos.x, pstack[i].pos.y, 0.0f);
-		draw.SetModelMatrix(world * scale);
-
 		switch(pstack[i].type) {
 		case BULLET_PLAYER_W1:
+			particle_draw_silhouette(pstack[i].pos, 1.0f, mesh::bullet_ball, olc::Colour::TANGERINE);
+			break;
+
 		case BULLET_PLAYER_W2:
+			particle_draw_silhouette(pstack[i].pos, 1.0f, mesh::bullet_ball, olc::Pixel(140,200,40));
+			break;
+
 		case BULLET_PLAYER_W3:
-			//mesh_draw(mesh::bullet_stick, false, olc::Colour::TANGERINE);
-			mesh_draw(mesh::bullet_ball, false, olc::Colour::TANGERINE);
+			particle_draw_silhouette(pstack[i].pos, 1.0f, mesh::bullet_ball, olc::Pixel(40,200,100));
 			break;
 
 		case BULLET_ENEMY_PINK:
-			mesh_draw(mesh::bullet_ball, false, olc::Pixel(239,41,115));
+			particle_draw_silhouette(pstack[i].pos, 2.0f, mesh::bullet_ball, olc::Pixel(255,41,115));
 			break;
 
 		case BULLET_ENEMY_BLUE:
-			mesh_draw(mesh::bullet_ball, false, olc::Pixel(49,189,247));
+			particle_draw_silhouette(pstack[i].pos, 2.0f, mesh::bullet_ball, olc::Pixel(49,189,255));
 			break;
 
 		case PARTICLE_SPARK:
+			particle_draw_sparks(pstack[i]);
+			break;
+
 		case PARTICLE_EXPLOSION:
+			particle_draw_explosion(pstack[i]);
+			break;
+
 		case PARTICLE_SMOKE:
+			particle_draw_smoke(pstack[i]);
 			break;
 
 		default:
