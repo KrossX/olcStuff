@@ -11,7 +11,6 @@
 #include "olcPGEX3_Miniaudio.h"
 #pragma warning(pop)
 
-
 #define WND_WIDTH  796
 #define WND_HEIGHT 448
 
@@ -173,6 +172,35 @@ public:
 
 	bool OnUserUpdate(float fElapsedTime) override
 	{
+		static bool firstboot = true;
+
+		if(!IsFocused()) {
+			draw.Clear(olc::Colour::VERY_DARK_GREY);
+			
+			float factor = 1.0f - (float)abs(std::sin(TotalTimeElapsed() * 2.0));
+
+			olc::Pixel col = olc::PixelLerp(olc::Colour::GREY, olc::Colour::WHITE, factor);
+			
+			std::string msg = firstboot? "START" : "CONTINUE";
+			
+			float msgz = msg.length() * 40.0f;
+			float posx = (WND_WIDTH - msgz) / 2.0f;
+			float posy = (WND_HEIGHT - 40) / 2.0f;
+			
+			draw.String({ posx, posy }, msg, col, {5,5});
+			
+			col = olc::PixelLerp(olc::Colour::DARK_RED, olc::Colour::RED, factor);
+			
+			factor = factor * factor * 40.0f;
+			
+			draw.String({ posx - 80.0f + factor, posy - 18.0f}, "{", col, {5,10});
+			draw.String({ posx + msgz + 40.0f - factor, posy - 18.0f}, "}", col, {5,10});
+			return true;
+		}
+		
+		firstboot = false;
+		
+		
 		check_input(fElapsedTime);
 		Weapon_step(fElapsedTime);
 		particle_step(player_bullet, fElapsedTime);
