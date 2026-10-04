@@ -1,16 +1,17 @@
 uniform vec2 bg_offset;
 uniform vec2 bg_region;
+uniform vec2 uv_offset;
 
 void main()
 {
-	vec4 col_blue0  = texture(pgeTexture1, vec2(37,16)/64.0);
-	vec4 col_blue1  = texture(pgeTexture1, vec2(37,46)/64.0);
-	vec4 col_blue2  = texture(pgeTexture1, vec2(45,46)/64.0);
-	vec4 col_green0 = texture(pgeTexture1, vec2(26,16)/64.0);
-	vec4 col_green1 = texture(pgeTexture1, vec2(26,46)/64.0);
-	vec4 col_brown0 = texture(pgeTexture1, vec2(13,16)/64.0);
-	vec4 col_brown1 = texture(pgeTexture1, vec2(13,46)/64.0);
-	vec4 col_white  = texture(pgeTexture1, vec2(49,46)/64.0);
+	vec4 col_blue0  = texture(pgeTexture1, vec2(37,16)/64.0 + uv_offset);
+	vec4 col_blue1  = texture(pgeTexture1, vec2(37,46)/64.0 + uv_offset);
+	vec4 col_blue2  = texture(pgeTexture1, vec2(45,46)/64.0 + uv_offset);
+	vec4 col_green0 = texture(pgeTexture1, vec2(26,16)/64.0 + uv_offset);
+	vec4 col_green1 = texture(pgeTexture1, vec2(26,46)/64.0 + uv_offset);
+	vec4 col_brown0 = texture(pgeTexture1, vec2(13,16)/64.0 + uv_offset);
+	vec4 col_brown1 = texture(pgeTexture1, vec2(13,46)/64.0 + uv_offset);
+	vec4 col_white  = texture(pgeTexture1, vec2(49,46)/64.0 + uv_offset);
 
 	vec2 pos = oTex;
 	pos.x -= 0.5;

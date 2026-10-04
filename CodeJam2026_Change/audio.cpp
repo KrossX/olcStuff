@@ -2,6 +2,13 @@ enum {
 	SND_SHOOT = 0,
 	SND_HIT,
 	SND_BOOM,
+	SND_POWERUP,
+	SND_SHOOT2,
+	SND_HIT2,
+	SND_HIT3,
+	SND_CHANGE,
+	MUS_GOTHIC,
+	MUS_HAVOC,
 	SND_TOTAL
 };
 
@@ -39,6 +46,14 @@ bool audio_init(void)
 	all_ok &= audio_load_array(sound[SND_SHOOT], bin2h::shoot_wav, sizeof(bin2h::shoot_wav), "audio/shoot.wav");
 	all_ok &= audio_load_array(sound[SND_HIT], bin2h::hit_wav, sizeof(bin2h::hit_wav), "audio/hit.wav");
 	all_ok &= audio_load_array(sound[SND_BOOM], bin2h::boom_wav, sizeof(bin2h::boom_wav), "audio/boom.wav");
+	all_ok &= audio_load_array(sound[SND_POWERUP], bin2h::powerup_wav, sizeof(bin2h::powerup_wav), "audio/powerup.wav");
+	all_ok &= audio_load_array(sound[SND_SHOOT2], bin2h::shoot2_wav, sizeof(bin2h::shoot2_wav), "audio/shoot2.wav");
+	all_ok &= audio_load_array(sound[SND_HIT2], bin2h::hit2_wav, sizeof(bin2h::hit2_wav), "audio/hit2.wav");
+	all_ok &= audio_load_array(sound[SND_HIT3], bin2h::hit3_wav, sizeof(bin2h::hit3_wav), "audio/hit3.wav");
+	all_ok &= audio_load_array(sound[SND_CHANGE], bin2h::change_wav, sizeof(bin2h::change_wav), "audio/change.wav");
+	
+	all_ok &= audio_load_array(sound[MUS_GOTHIC], bin2h::gothic_dark_loop_64k_mp3, sizeof(bin2h::gothic_dark_loop_64k_mp3), "audio/gothic_dark_loop_64k.mp3");
+	all_ok &= audio_load_array(sound[MUS_HAVOC], bin2h::havoc_loop_64k_mp3, sizeof(bin2h::havoc_loop_64k_mp3), "audio/havoc_loop_64k.mp3");
 
 	//all_ok &= audio_load_file(sound[SND_SHOOT], "audio/shoot.wav");
 	//all_ok &= audio_load_file(sound[SND_HIT], "audio/hit.wav");

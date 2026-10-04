@@ -5,6 +5,7 @@ enum {
 
 	BULLET_ENEMY_PINK,
 	BULLET_ENEMY_BLUE,
+	BULLET_ENEMY_POWERUP,
 
 	PARTICLE_SPARK,
 	PARTICLE_EXPLOSION,
@@ -17,6 +18,7 @@ struct particle {
 	int type;
 	float lifetime;
 	float damage;
+	float scale;
 };
 
 particle enemy_bullet[MAX_PARTICLES];
@@ -34,9 +36,9 @@ void particle_init(void)
 	}
 }
 
-void particle_add(olc::vf2d pos, olc::vf2d speed, olc::vf2d spz, int type, float damage = 1.0f)
+void particle_add(olc::vf2d pos, olc::vf2d speed, olc::vf2d spz, int type, float damage = 1.0f, float scale = 1.0f)
 {
-	particle pnew = {pos, speed, spz, true, type, 0, damage};
+	particle pnew = {pos, speed, spz, true, type, 0, damage, scale};
 	particle *pstack = nullptr, *oldest;
 
 	switch(type) {
@@ -48,6 +50,7 @@ void particle_add(olc::vf2d pos, olc::vf2d speed, olc::vf2d spz, int type, float
 
 	case BULLET_ENEMY_PINK:
 	case BULLET_ENEMY_BLUE:
+	case BULLET_ENEMY_POWERUP:
 		pstack = enemy_bullet;
 		break;
 
@@ -87,25 +90,25 @@ void particle_step(particle *pstack, float dt)
 
 		pstack[i].lifetime += dt;
 
-		if(pstack[i].lifetime > 10.0f || pstack[i].pos.y > 0 || pstack[i].pos.y < -200.0f)
+		if(pstack[i].lifetime > 10.0f || pstack[i].pos.y > 0 || pstack[i].pos.y < -300.0f)
 			pstack[i].active = false;
 	}
 }
 
-void particle_draw_silhouette(olc::vf2d pos, float sz, mesh::mesh &m, olc::Pixel col)
+void particle_draw_silhouette(olc::vf2d pos, olc::vf2d spd, float sz, mesh::mesh &m, olc::Pixel col)
 {
-	olc::mf4d world, scale;
+	olc::mf4d world, scale, rotZ;
 
 	world.identity();
 	world.translate(pos.x, pos.y, 0.0f);
-
-	scale.scale(sz+0.2f, sz+0.2f, sz+0.2f);
-	draw.SetModelMatrix(world * scale);
+	rotZ.rotateZ(std::atan2f(-spd.x, spd.y));
+	scale.scale(sz + 0.2f, sz + 0.2f, sz + 0.2f);
+	draw.SetModelMatrix(world * scale * rotZ);
 	draw.SetCullMode(olc::CullMode::CounterClockWise);
 	mesh_draw(m, false, olc::Colour::BLACK);
 
 	scale.scale(sz, sz, sz);
-	draw.SetModelMatrix(world * scale);
+	draw.SetModelMatrix(world * scale * rotZ);
 	draw.SetCullMode(olc::CullMode::ClockWise);
 	mesh_draw(m, false, col);
 }
@@ -173,6 +176,8 @@ void particle_draw_sparks(particle &spark)
 
 void particle_draw(particle *pstack)
 {
+	olc::Pixel col = olc::Colour::WHITE;
+	
 	for(int i = 0; i < MAX_PARTICLES; i++) {
 		if(!pstack[i].active) continue;
 
@@ -180,23 +185,31 @@ void particle_draw(particle *pstack)
 
 		switch(pstack[i].type) {
 		case BULLET_PLAYER_W1:
-			particle_draw_silhouette(pstack[i].pos, 1.0f, mesh::bullet_ball, olc::Colour::TANGERINE);
+			particle_draw_silhouette(pstack[i].pos, pstack[i].spd, pstack[i].scale, mesh::bullet_stick, olc::Colour::TANGERINE);
 			break;
 
 		case BULLET_PLAYER_W2:
-			particle_draw_silhouette(pstack[i].pos, 1.0f, mesh::bullet_ball, olc::Pixel(140,200,40));
+			particle_draw_silhouette(pstack[i].pos, pstack[i].spd, pstack[i].scale, mesh::bullet_stick, olc::Pixel(140,200,40));
 			break;
 
 		case BULLET_PLAYER_W3:
-			particle_draw_silhouette(pstack[i].pos, 1.0f, mesh::bullet_ball, olc::Pixel(40,200,100));
+			particle_draw_silhouette(pstack[i].pos, pstack[i].spd, pstack[i].scale, mesh::bullet_stick, olc::Pixel(40,200,100));
 			break;
 
 		case BULLET_ENEMY_PINK:
-			particle_draw_silhouette(pstack[i].pos, 2.0f, mesh::bullet_ball, olc::Pixel(255,41,115));
+			particle_draw_silhouette(pstack[i].pos, pstack[i].spd, pstack[i].scale, mesh::bullet_ball, olc::Pixel(255,41,115));
 			break;
 
 		case BULLET_ENEMY_BLUE:
-			particle_draw_silhouette(pstack[i].pos, 2.0f, mesh::bullet_ball, olc::Pixel(49,189,255));
+			particle_draw_silhouette(pstack[i].pos, pstack[i].spd, pstack[i].scale, mesh::bullet_ball, olc::Pixel(49,189,255));
+			break;
+			
+		case BULLET_ENEMY_POWERUP:
+			switch((int)(total_time*30.0)&1) {
+			case 0: col = olc::Colour::TANGERINE; break;
+			case 1: col = olc::Colour::WHITE; break;
+			}
+			particle_draw_silhouette(pstack[i].pos, pstack[i].spd, pstack[i].scale, mesh::bullet_ball, col);
 			break;
 
 		case PARTICLE_SPARK:
